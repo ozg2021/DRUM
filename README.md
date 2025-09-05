@@ -1,6 +1,6 @@
 # DRUM (Diffusion-based runoff model)
 
-This repository contains the code and models for the paper "Probabilistic Diffusion Models Advance Extreme Flood Forecasting" submitted to Geophysical Research Letters.
+This repository contains the code and models for the paper "Probabilistic Diffusion Models Advance Extreme Flood Forecasting" published in Geophysical Research Letters (doi: https://doi.org/10.1029/2025GL115705).
 
 ## Contents
 
