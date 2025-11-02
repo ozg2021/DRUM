@@ -65,28 +65,24 @@ def pre_data(
 
         Y = load_discharge(camels_path, i, area, is_train, is_valid, adjusted_date_ranges)
 
-        negative_indices = np.argwhere(Y < 0)
-        if len(negative_indices) > 0:
-            print(
-                f"Warning: Basin {i} contains {len(negative_indices)} negative discharge values. Removing these samples.")
-            print(f"  Negative values range: {np.min(Y[Y < 0]):.4f} to {np.max(Y[Y < 0]):.4f}")
-            X = np.delete(X, negative_indices[:, 0], axis=0)
-            Y = np.delete(Y, negative_indices[:, 0], axis=0)
+        X = np.array(create_X(X, time_step))
+        Y = np.array(create_Y(Y, time_step))
 
-        nan_count = np.sum(np.isnan(Y))
-        if nan_count > 0:
-            nan_indices = np.argwhere(np.isnan(Y))
-            print(f"Warning: Basin {i} contains {nan_count} NaN discharge values. Removing these samples.")
-            print(f"  Total data points before cleaning: {len(Y) + nan_count}")
-            X = np.delete(X, nan_indices, axis=0)
-            Y = np.delete(Y, nan_indices, axis=0)
+        neg_idx = np.where(Y < 0)[0]
+        if len(neg_idx) > 0:
+            print(f"Warning: Basin {i} contains {len(neg_idx)} negative discharge samples. Removing.")
+            X = np.delete(X, neg_idx, axis=0)
+            Y = np.delete(Y, neg_idx, axis=0)
+
+        nan_idx = np.where(np.isnan(Y))[0]
+        if len(nan_idx) > 0:
+            print(f"Warning: Basin {i} contains {len(nan_idx)} NaN discharge samples. Removing.")
+            X = np.delete(X, nan_idx, axis=0)
+            Y = np.delete(Y, nan_idx, axis=0)
 
         if len(Y) == 0:
             print(f"Error: Basin {i} has no valid data after cleaning. Skipping this basin.")
             continue
-
-        X = np.array(create_X(X, time_step))
-        Y = np.array(create_Y(Y, time_step))
 
         dataset = TimeseriesDataset(X, Y)
 
