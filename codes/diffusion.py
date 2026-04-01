@@ -90,54 +90,113 @@ class Diffusion(nn.Module):
         return mean + (var ** 0.5) * eps
 
 
-    def loss_conditional(self, x0, c, xs, noise=None):
+    def loss_conditional(self, x0, c, xs, q_std, noise=None):
         """
         Compute the conditional loss for the model based on the noisy samples.
-
+        Uses inverse-variance weighting by basin discharge std.
+ 
         Args:
             x0 (torch.Tensor): The original data (before diffusion).
             c (torch.Tensor): Conditional inputs for the model (e.g., class labels).
             xs (torch.Tensor): The current state of the data (after some diffusion steps).
+            q_std (float): Standard deviation of discharge for the current basin,
+                          used for inverse-variance weighting.
             noise (Optional[torch.Tensor]): The noise added to the data (default is None).
-
+ 
         Returns:
             torch.Tensor: The computed loss.
         """
         batch_size = x0.shape[0]
         t = torch.randint(0, self.n_steps, (batch_size,), dtype=torch.long).to(self.device)
-
+ 
         if noise is None:
             noise = torch.randn_like(x0)
-
+ 
         xt = self.q_sample(x0, t, eps=noise)
         eps_theta = self.eps_model(xt, t / self.n_steps, c, xs)
-
-        loss = torch.norm(noise - eps_theta, p=2, dim=1).pow(2).sum()
-        # loss = torch.mean((noise - eps_theta) ** 2)
+ 
+        weight = 1.0 / (q_std + 1e-8) ** 2
+        loss = torch.mean(weight * (noise - eps_theta) ** 2)
         return loss
-
-
-    def loss_unconditional(self, x0, xs, noise=None):
+ 
+ 
+    def loss_unconditional(self, x0, xs, q_std, noise=None):
         """
         Compute the unconditional loss for the model based on noisy samples.
-
+        Uses inverse-variance weighting by basin discharge std.
+ 
         Args:
             x0 (torch.Tensor): The original data (before diffusion).
             xs (torch.Tensor): The current state of the data (after some diffusion steps).
+            q_std (float): Standard deviation of discharge for the current basin,
+                          used for inverse-variance weighting.
             noise (Optional[torch.Tensor]): The noise added to the data (default is None).
-
+ 
         Returns:
             torch.Tensor: The computed loss.
         """
         batch_size = x0.shape[0]
         t = torch.randint(0, self.n_steps, (batch_size,), dtype=torch.long).to(self.device)
-
+ 
         if noise is None:
             noise = torch.randn_like(x0)
-
+ 
         xt = self.q_sample(x0, t, eps=noise)
         eps_theta = self.eps_model(xt, t / self.n_steps, xs)
-
-        loss = torch.norm(noise - eps_theta, p=2, dim=1).pow(2).sum()
-        # loss = torch.mean((noise - eps_theta) ** 2)
+ 
+        weight = 1.0 / (q_std + 1e-8) ** 2
+        loss = torch.mean(weight * (noise - eps_theta) ** 2)
         return loss
+
+    # def loss_conditional(self, x0, c, xs, noise=None):
+    #     """
+    #     Compute the conditional loss for the model based on the noisy samples.
+
+    #     Args:
+    #         x0 (torch.Tensor): The original data (before diffusion).
+    #         c (torch.Tensor): Conditional inputs for the model (e.g., class labels).
+    #         xs (torch.Tensor): The current state of the data (after some diffusion steps).
+    #         noise (Optional[torch.Tensor]): The noise added to the data (default is None).
+
+    #     Returns:
+    #         torch.Tensor: The computed loss.
+    #     """
+    #     batch_size = x0.shape[0]
+    #     t = torch.randint(0, self.n_steps, (batch_size,), dtype=torch.long).to(self.device)
+
+    #     if noise is None:
+    #         noise = torch.randn_like(x0)
+
+    #     xt = self.q_sample(x0, t, eps=noise)
+    #     eps_theta = self.eps_model(xt, t / self.n_steps, c, xs)
+
+    #     loss = torch.norm(noise - eps_theta, p=2, dim=1).pow(2).sum()
+    #     # loss = torch.mean((noise - eps_theta) ** 2)
+    #     return loss
+
+
+    # def loss_unconditional(self, x0, xs, noise=None):
+    #     """
+    #     Compute the unconditional loss for the model based on noisy samples.
+
+    #     Args:
+    #         x0 (torch.Tensor): The original data (before diffusion).
+    #         xs (torch.Tensor): The current state of the data (after some diffusion steps).
+    #         noise (Optional[torch.Tensor]): The noise added to the data (default is None).
+
+    #     Returns:
+    #         torch.Tensor: The computed loss.
+    #     """
+    #     batch_size = x0.shape[0]
+    #     t = torch.randint(0, self.n_steps, (batch_size,), dtype=torch.long).to(self.device)
+
+    #     if noise is None:
+    #         noise = torch.randn_like(x0)
+
+    #     xt = self.q_sample(x0, t, eps=noise)
+    #     eps_theta = self.eps_model(xt, t / self.n_steps, xs)
+
+    #     loss = torch.norm(noise - eps_theta, p=2, dim=1).pow(2).sum()
+    #     # loss = torch.mean((noise - eps_theta) ** 2)
+    #     return loss
+
