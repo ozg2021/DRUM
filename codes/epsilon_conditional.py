@@ -123,3 +123,78 @@ class EpsModel(nn.Module):
         out = self.fc(combined_out)
 
         return out
+
+
+class EpsModel_nowcast(nn.Module):
+    """
+    EpsModel_nowcast: A conditional diffusion model for single-step nowcasting.
+ 
+    Simplified version of EpsModel that removes the decoder LSTM and MLP branches,
+    using only the Encoder LSTM (ForcingEmbedding) to compress the meteorological
+    sequence into a condition vector, followed by a lightweight FC head for noise prediction.
+    """
+ 
+    def __init__(self, input_size=7, static_attr_len=27, hidden_size=256, emb_dim=128, future_step=1, num_layers=1):
+        """
+        Initialize the conditional EpsModel_nowcast for noise prediction.
+ 
+        Args:
+            input_size (int): The size of the input feature vector (e.g., meteorological variables).
+            static_attr_len (int): The length of the static attributes (e.g., basin characteristics).
+            hidden_size (int): The size of the hidden layer in LSTM and FC components.
+            emb_dim (int): The dimensionality of the time embedding vector.
+            future_step (int): The number of future time steps to predict.
+            num_layers (int): Number of LSTM layers in the encoder.
+        """
+        super(EpsModel_nowcast, self).__init__()
+ 
+        self.hidden_size = hidden_size
+        self.emb_dim = emb_dim
+        self.future_step = future_step
+ 
+        self.time_embedding = TimeEmbedding(emb_dim)
+ 
+        self.static_mlp = nn.Sequential(
+            nn.Linear(static_attr_len, 64),
+            nn.GELU(),
+            nn.Linear(64, 128)
+        )
+ 
+        self.forcing_embedding = ForcingEmbedding(input_size + 128, hidden_size, num_layers)
+ 
+        # FC head: xt(1) + t_emb(emb_dim) + xd_emb(hidden_size) + xs_emb(128)
+        fc_input_size = 1 + emb_dim + hidden_size + 128
+        self.fc = nn.Sequential(
+            nn.Linear(fc_input_size, hidden_size),
+            nn.GELU(),
+            nn.Linear(hidden_size, future_step)
+        )
+ 
+    def forward(self, xt, t, xd, xs):
+        """
+        Forward pass through the conditional nowcast noise prediction model.
+ 
+        Args:
+            xt (torch.Tensor): Current noisy state. Shape: (batch_size, 1).
+            t (torch.Tensor): Diffusion time step. Shape: (batch_size,).
+            xd (torch.Tensor): Meteorological forcing sequence.
+                              Shape: (batch_size, seq_len, input_size).
+            xs (torch.Tensor): Static basin attributes.
+                              Shape: (batch_size, static_attr_len).
+ 
+        Returns:
+            torch.Tensor: Predicted noise. Shape: (batch_size, future_step).
+        """
+        batch_size, seq_len, _ = xd.size()
+ 
+        t_emb = self.time_embedding(t)
+        xs_emb = self.static_mlp(xs)
+        xs_emb_expanded = xs_emb.unsqueeze(1).expand(batch_size, seq_len, -1)
+        xd_combined = torch.cat((xd, xs_emb_expanded), dim=2)
+        xd_emb = self.forcing_embedding(xd_combined)
+ 
+        combined_input = torch.cat((xt, t_emb, xd_emb, xs_emb), dim=1)
+        out = self.fc(combined_input)
+ 
+        return out
+ 
