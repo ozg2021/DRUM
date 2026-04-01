@@ -17,7 +17,7 @@ def get_current_lr(optimizer):
     return optimizer.param_groups[0]['lr']
 
 
-def train_conditional(dataloader_list, save_dir, eps_model, diffusion, optimizer, static_attributes, epochs,
+def train_conditional(dataloader_list, save_dir, eps_model, diffusion, optimizer, static_attributes, stds, epochs,
                       lr_schedule, logger, device):
     """
     Train the conditional diffusion model for noise prediction.
@@ -64,7 +64,7 @@ def train_conditional(dataloader_list, save_dir, eps_model, diffusion, optimizer
 
                 xs = static_attributes[basin_idx].to(device)
 
-                loss = diffusion.loss_conditional(runoff, rain, xs)
+                loss = diffusion.loss_conditional(runoff, rain, xs, stds[basin_idx])
                 loss.backward()
 
                 grad_norm = torch.nn.utils.clip_grad_norm_(eps_model.parameters(), max_norm=1.0)
@@ -84,7 +84,7 @@ def train_conditional(dataloader_list, save_dir, eps_model, diffusion, optimizer
     return train_loss
 
 
-def train_unconditional(dataloader_list, save_dir, eps_model, diffusion, optimizer, static_attributes, epochs,
+def train_unconditional(dataloader_list, save_dir, eps_model, diffusion, optimizer, static_attributes, stds, epochs,
                         lr_schedule, logger, device):
     """
     Train the unconditional diffusion model for noise prediction.
@@ -132,7 +132,7 @@ def train_unconditional(dataloader_list, save_dir, eps_model, diffusion, optimiz
 
                 xs = static_attributes[basin_idx].to(device)
 
-                loss = diffusion.loss_unconditional(runoff, xs)
+                loss = diffusion.loss_unconditional(runoff, xs, stds[basin_idx])
                 loss.backward()
 
                 grad_norm = torch.nn.utils.clip_grad_norm_(eps_model.parameters(), max_norm=1.0)
