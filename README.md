@@ -15,12 +15,15 @@ Code and models for the paper
 * `plot_figure2.ipynb`: Reproduces Figure 2 in the GRL paper
 * `results_nowcasting/`, `CRPS/`, `shp/`: Supporting data and metrics
 * `basin_list.txt`: Basin IDs used in analysis
+* `train_conditional_nowcast.ipynb`: Training notebooks for conditional diffusion models
+* `train_unconditional_nowcast.ipynb`: Training notebooks for unconditional diffusion models
 
 ---
 
 ## Usage
 
 * Run `codes/DDIM.ipynb` for DDIM sampling examples
+* Run `train_conditional_nowcast.ipynb` / `train_unconditional_nowcast.ipynb` to train diffusion models
 * Run `plot_data/plot_figure2.ipynb` to reproduce **Figure 2**
 
 ---
